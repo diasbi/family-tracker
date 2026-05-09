@@ -307,6 +307,20 @@ public class TrackerFrame extends JFrame {
 
         Map<LocalDate, List<Event>> events = storage.getEvents();
 
+        LocalDate startOfWeek = selectedWeek.with(DayOfWeek.MONDAY);
+        LocalDate endOfWeek = selectedWeek.with(DayOfWeek.SUNDAY);
+
+        Map<LocalDate, List<Event>> weekEvents =
+                events.entrySet()
+                        .stream()
+                        .filter(entry ->
+                                !entry.getKey().isBefore(startOfWeek)
+                                        && !entry.getKey().isAfter(endOfWeek))
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue
+                        ));
+
         int maxEvents = 0;
         for (List<Event> list : events.values()) {
             if (list.size() > maxEvents) {
