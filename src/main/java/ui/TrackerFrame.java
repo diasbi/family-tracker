@@ -10,10 +10,15 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.ActionListener;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 public class TrackerFrame extends JFrame {
@@ -24,6 +29,8 @@ public class TrackerFrame extends JFrame {
     private JComboBox<EventCategory> categoryFilter;
     private JComboBox<String> weekPicker;
     private JComboBox<String> monthPicker;
+    private JTextField searchField;
+    private LocalDate selectedDate;
 
     private int themecnt;
     private final Color[][] THEMES = {
@@ -43,22 +50,23 @@ public class TrackerFrame extends JFrame {
         setResizable(false);
 
         initUI();
-        loadEvents();
+        selectedDate = LocalDate.now();
+        applyFilters();
     }
 
     private void initUI() {
-        // Главная панель
+        // Main panel
         JPanel mainPanel = new JPanel(new BorderLayout());
         this.add(mainPanel);
-        // Панель инструментов (поиск и фильтры)
+        // Toolbar panel (filter)
         JPanel toolbarPanel = createToolbarPanel();
         mainPanel.add(toolbarPanel, BorderLayout.NORTH);
 
-        // Таблица задач
+        // Table panel
         JPanel tablePanel = createTablePanel();
         mainPanel.add(tablePanel, BorderLayout.CENTER);
 
-        // Панель кнопок
+        // Buttons panel
         JPanel buttonsPanel = createButtonsPanel();
         mainPanel.add(buttonsPanel, BorderLayout.SOUTH);
         changeTheme();
@@ -71,29 +79,31 @@ public class TrackerFrame extends JFrame {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
 
         // TODO: add search later and automatically change the week and month
-//        panel.add(new JLabel("Поиск:"));
-//        searchField = new JTextField(15);
-//        searchField.addKeyListener(new KeyAdapter() { // Use KeyAdapter for convenience
-//            @Override
-//            public void keyReleased(KeyEvent e) {
-//                applyFilters();
-//            }
-//        });
-//        panel.add(searchField);
+        panel.add(new JLabel("Поиск:"));
+        searchField = new JTextField(15);
+        searchField.addKeyListener(new KeyAdapter() { // Use KeyAdapter for convenience
+            @Override
+            public void keyReleased(KeyEvent e) {
+                applyFilters();
+
+            }
+        });
+       panel.add(searchField);
+
 
         panel.add(new JLabel("Дата: "));
         String[] weeks = {"1-ая неделя", "2-ая неделя", "3-ая неделя", "4-ая неделя"};
         weekPicker = new JComboBox<>(weeks);
+        weekPicker.setSelectedIndex( (LocalDate.now().getDayOfMonth() - 1) / 7 );
         weekPicker.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                applyFilters();
-            }
+            public void actionPerformed(ActionEvent e) { applyFilters(); }
         });
         panel.add(weekPicker);
 
         String[] months = {"Январь", "Февраль", "Март", "Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"};
         monthPicker = new JComboBox<>(months);
+        monthPicker.setSelectedIndex(LocalDate.now().getMonthValue()-1);
         monthPicker.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -218,7 +228,7 @@ public class TrackerFrame extends JFrame {
         Event newEvent = dialog.showDialog();
         if (newEvent != null) {
             storage.addEvent(newEvent);
-            loadEvents();
+            loadEvents(selectedDate);
         }
     }
 
@@ -237,7 +247,7 @@ public class TrackerFrame extends JFrame {
             Event editedEvent = dialog.showDialog();
             if (editedEvent != null) {
                 storage.updateEvent(editedEvent);
-                loadEvents();
+                loadEvents(selectedDate);
             }
         }
     }
@@ -260,14 +270,27 @@ public class TrackerFrame extends JFrame {
 
             if (value instanceof Event event) {
                 storage.rmEvent(event);
-                loadEvents();
             }
+            loadEvents(selectedDate);
         }
     }
 
     //"Apply" functions
     private void applyFilters() {
-        loadEvents();
+
+        LocalDate today = LocalDate.now();
+        int year = today.getYear();
+
+        selectedDate =
+                LocalDate.of(year, monthPicker.getSelectedIndex()+1, 1)
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        .plusWeeks(weekPicker.getSelectedIndex());
+
+        if (selectedDate.isBefore(today)) {
+            selectedDate = selectedDate.plusYears(1);
+        }
+
+        loadEvents(selectedDate);
     }
     private void applyTheme(Component c, Color bg, Color fg) {
         c.setBackground(bg);
@@ -302,7 +325,7 @@ public class TrackerFrame extends JFrame {
     }
 
     //Events loading
-    private void loadEvents() {
+    private void loadEvents(LocalDate selectedWeek) {
         tableModel.setRowCount(0);
 
         Map<LocalDate, List<Event>> events = storage.getEvents();
@@ -322,7 +345,31 @@ public class TrackerFrame extends JFrame {
                         ));
 
         int maxEvents = 0;
-        for (List<Event> list : events.values()) {
+        //
+        System.out.println("=== ALL EVENTS ===");
+
+        for (Map.Entry<LocalDate, List<Event>> entry : events.entrySet()) {
+            System.out.println("Date: " + entry.getKey());
+
+            for (Event e : entry.getValue()) {
+                System.out.println("   - " + e.getTitle());
+            }
+        }
+
+        System.out.println("==================");
+        System.out.println("=== WEEK EVENTS from" + startOfWeek + " until "+ endOfWeek);
+
+        for (Map.Entry<LocalDate, List<Event>> entry : weekEvents.entrySet()) {
+            System.out.println("Date: " + entry.getKey());
+
+            for (Event e : entry.getValue()) {
+                System.out.println("   - " + e.getTitle());
+            }
+        }
+
+        System.out.println("===================");
+        //
+        for (List<Event> list : weekEvents.values()) {
             if (list.size() > maxEvents) {
                 maxEvents = list.size();
             }
@@ -332,7 +379,7 @@ public class TrackerFrame extends JFrame {
 
             Object[] row = new Object[7];
 
-            for (Map.Entry<LocalDate, List<Event>> entry : events.entrySet()) {
+            for (Map.Entry<LocalDate, List<Event>> entry : weekEvents.entrySet()) {
 
                 int dayIndex = entry.getKey().getDayOfWeek().getValue() - 1;
                 List<Event> list = entry.getValue();
