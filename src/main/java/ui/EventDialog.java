@@ -1,5 +1,6 @@
 package ui;
 
+import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.EventCategory;
 import models.Priority;
@@ -18,6 +19,7 @@ public class EventDialog extends JDialog {
     private JSpinner dateSpinner;
     private JButton okBtn;
     private JButton cancelBtn;
+    private JDateChooser dateChooser;
 
     private Event event;
     private boolean isConfirmed = false;
@@ -97,11 +99,9 @@ public class EventDialog extends JDialog {
         mainPanel.add(new JLabel("Дата события:"), gbc);
 
         gbc.gridx = 1;
-        SpinnerDateModel dateModel = new SpinnerDateModel();
-        dateSpinner = new JSpinner(dateModel);
-        JSpinner.DateEditor editor = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
-        dateSpinner.setEditor(editor);
-        mainPanel.add(dateSpinner, gbc);
+        dateChooser = new JDateChooser();
+        dateChooser.setDate(new java.util.Date());
+        mainPanel.add(dateChooser, gbc);
 
 
         // Кнопки
@@ -125,7 +125,7 @@ public class EventDialog extends JDialog {
             descriptionArea.setText(event.getDescription());
             categoryCombo.setSelectedItem(event.getCategory());
             priorityCombo.setSelectedItem(event.getPriority());
-
+            dateChooser.setDate(java.sql.Date.valueOf(event.getEventDate()));
         }
     }
     private void confirmDialog() {
@@ -133,7 +133,7 @@ public class EventDialog extends JDialog {
         String description = descriptionArea.getText();
         EventCategory category = (EventCategory) categoryCombo.getSelectedItem();
         Priority priority = (Priority) priorityCombo.getSelectedItem();
-        java.util.Date utilDate = (java.util.Date) dateSpinner.getValue();
+        java.util.Date utilDate = dateChooser.getDate();
 
         LocalDate date = utilDate
                 .toInstant()

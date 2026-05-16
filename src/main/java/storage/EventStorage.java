@@ -26,9 +26,6 @@ public class EventStorage {
 
     public void initTable()
     {
-
-
-        //Creating table
         String sql = "CREATE TABLE IF NOT EXISTS events (" +
                 "id TEXT PRIMARY KEY, " +
                 "title TEXT NOT NULL, " +
@@ -79,7 +76,7 @@ public class EventStorage {
             }
 
         } catch (SQLException ex) {
-            System.out.println("Ошибка при обновлении книги: " + ex.getMessage());
+            System.out.println("Ошибка при обновлении события: " + ex.getMessage());
         }
     }
 
@@ -110,7 +107,7 @@ public class EventStorage {
             }
 
         } catch (SQLException ex) {
-            System.out.println("Ошибка при добавлении книги: " + ex.getMessage());
+            System.out.println("Ошибка при добавлении события: " + ex.getMessage());
         }
     }
 
@@ -127,11 +124,11 @@ public class EventStorage {
 
             if (rowsDeleted > 0 && this.events != null) {
                 this.events.remove(e);
-                System.out.println("Книга удалена из базы и списка.");
+                System.out.println("Событие удалена из базы и списка.");
             }
 
         } catch (SQLException ex) {
-            System.out.println("Ошибка при удалении книги: " + ex.getMessage());
+            System.out.println("Ошибка при удалении события: " + ex.getMessage());
         }
     }
 
@@ -164,7 +161,7 @@ public class EventStorage {
                         .add(event);
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка при загрузке книг: " + e.getMessage());
+            System.err.println("Ошибка при загрузке событий: " + e.getMessage());
         }
 
         this.events = loadedEvents;

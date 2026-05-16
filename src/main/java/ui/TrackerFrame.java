@@ -2,6 +2,8 @@ package ui;
 
 import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import com.toedter.calendar.JCalendar;
+import com.toedter.calendar.JDateChooser;
 import models.Event;
 import models.EventCategory;
 import storage.EventStorage;
@@ -15,8 +17,11 @@ import java.awt.event.KeyEvent;
 import java.awt.event.ActionListener;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -29,6 +34,7 @@ public class TrackerFrame extends JFrame {
     private JComboBox<EventCategory> categoryFilter;
     private JComboBox<String> weekPicker;
     private JComboBox<String> monthPicker;
+    private JDateChooser datePicker;
     private JTextField searchField;
     private LocalDate selectedDate;
 
@@ -40,7 +46,7 @@ public class TrackerFrame extends JFrame {
 
     // Init Frame
     public TrackerFrame() {
-        super("Family Tracker");
+        super("Easy Tracker");
 
         storage = new EventStorage();
 
@@ -92,26 +98,73 @@ public class TrackerFrame extends JFrame {
 
 
         panel.add(new JLabel("Дата: "));
-        String[] weeks = {"1-ая неделя", "2-ая неделя", "3-ая неделя", "4-ая неделя"};
-        weekPicker = new JComboBox<>(weeks);
-        weekPicker.setSelectedIndex( (LocalDate.now().getDayOfMonth() - 1) / 7 );
-        weekPicker.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { applyFilters(); }
-        });
-        panel.add(weekPicker);
+        datePicker = new JDateChooser();
+        datePicker.setDate(
+                java.sql.Date.valueOf(LocalDate.now())
+        );
+        datePicker.getCalendarButton().setBackground(Color.GRAY);
+        datePicker.getCalendarButton().setForeground(Color.WHITE);
+        JCalendar calendar = datePicker.getJCalendar();
+        calendar.setBackground(new Color(45,45,45));
+        calendar.setForeground(Color.WHITE);
+        JTextField field =
+                (JTextField) datePicker.getDateEditor().getUiComponent();
+        field.setSelectionColor(new Color(90, 90, 90));
+        field.setSelectedTextColor(Color.WHITE);
+        datePicker.setPreferredSize(new Dimension(160, 20));
+        datePicker.addPropertyChangeListener("date", e -> {
 
-        String[] months = {"Январь", "Февраль", "Март", "Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"};
-        monthPicker = new JComboBox<>(months);
-        monthPicker.setSelectedIndex(LocalDate.now().getMonthValue()-1);
-        monthPicker.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                applyFilters();
-            }
-        });
+            if (datePicker.getDate() == null) return;
 
-        panel.add(monthPicker);
+            LocalDate selected = datePicker.getDate()
+                    .toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
+            LocalDate start =
+                    selected.with(DayOfWeek.MONDAY);
+
+            LocalDate end =
+                    start.plusDays(6);
+
+            String text = String.format(
+                    "%d – %d %s %d",
+                    start.getDayOfMonth(),
+                    end.getDayOfMonth(),
+                    end.getMonth().getDisplayName(
+                            TextStyle.FULL,
+                            new Locale("ru")
+                    ),
+                    end.getYear()
+            );
+
+
+            field.setText(text);
+
+            loadEvents(start);
+        });
+        panel.add(datePicker);
+
+//        String[] weeks = {"1-ая неделя", "2-ая неделя", "3-ая неделя", "4-ая неделя"};
+//        weekPicker = new JComboBox<>(weeks);
+//        weekPicker.setSelectedIndex( (LocalDate.now().getDayOfMonth() - 1) / 7 );
+//        weekPicker.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) { applyFilters(); }
+//        });
+//        panel.add(weekPicker);
+//
+//        String[] months = {"Январь", "Февраль", "Март", "Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"};
+//        monthPicker = new JComboBox<>(months);
+//        monthPicker.setSelectedIndex(LocalDate.now().getMonthValue()-1);
+//        monthPicker.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                applyFilters();
+//            }
+//        });
+//
+//        panel.add(monthPicker);
 
         // Фильтр по категориям
         panel.add(new JLabel("Категория:"));
@@ -143,7 +196,7 @@ public class TrackerFrame extends JFrame {
 
 
         JPanel panelTheme = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
-        JButton applyFilterBtn = new JButton("Цвет");
+        JButton applyFilterBtn = new JButton("Тема");
         applyFilterBtn.addActionListener(e -> changeTheme());
         panelTheme.add(applyFilterBtn);
 
@@ -281,10 +334,10 @@ public class TrackerFrame extends JFrame {
         LocalDate today = LocalDate.now();
         int year = today.getYear();
 
-        selectedDate =
-                LocalDate.of(year, monthPicker.getSelectedIndex()+1, 1)
-                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                        .plusWeeks(weekPicker.getSelectedIndex());
+        selectedDate = datePicker.getDate()
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
 
         if (selectedDate.isBefore(today)) {
             selectedDate = selectedDate.plusYears(1);
